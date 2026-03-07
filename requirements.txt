@@ -3,3 +3,5 @@ openai
 python-dotenv
 flask
 flask-cors
+pandas
+openpyxl

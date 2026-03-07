@@ -4,104 +4,322 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LinkedIn Profile Scraper</title>
+    <title>Revlane Engine | Intelligence Suite</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
 <body>
-    <div class="background-glow"></div>
-    <div class="container">
-        <header>
-            <h1>LinkedIn <span>Scraper</span></h1>
-            <p>Extract profile insights instantly.</p>
-        </header>
-
-        <div class="input-container">
-            <!-- LinkedIn Card -->
-            <div class="card input-card">
-                <h2>LinkedIn Analysis</h2>
-                <p class="hint">Extract profile insights instantly.</p>
-                <div class="input-group">
-                    <input type="text" id="urlInput" placeholder="https://www.linkedin.com/in/username"
-                        autocomplete="off">
-                    <button id="scrapeBtn" onclick="scrapeProfile()">
-                        <span id="btnText">Scrape Profile</span>
-                        <span id="btnLoader" class="loader hidden"></span>
-                    </button>
+    <div class="app-container">
+        <!-- Sidebar / Navigation -->
+        <nav class="sidebar">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i data-lucide="zap"></i>
                 </div>
-
-                <div id="resultsArea" class="hidden" style="margin-top: 20px;">
-                    <div class="result-box">
-                        <div class="insight-row">
-                            <div class="label">Status</div>
-                            <div class="value">Scan Complete.</div>
-                        </div>
-                        <div class="json-toggle" onclick="toggleJson()">Show Raw JSON</div>
-                        <pre id="jsonOutput" class="hidden"></pre>
-                    </div>
-                </div>
+                <span class="logo-text">Revlane</span>
             </div>
 
-            <!-- Website Card -->
-            <div class="card input-card">
-                <h2>Website Analysis</h2>
-                <p class="hint">Analyze landing page goals and roadblocks.</p>
-                <div class="input-group">
-                    <input type="text" id="websiteInput" placeholder="https://example.com" autocomplete="off">
-                    <button id="websiteBtn" onclick="scrapeWebsite()">
-                        <span id="webBtnText">Analyze Site</span>
-                        <span id="webBtnLoader" class="loader hidden"></span>
+            <div class="nav-links">
+                <button class="nav-btn active" onclick="switchTab('profile')">
+                    <i data-lucide="user"></i>
+                    <span>Profile Data</span>
+                </button>
+                <button class="nav-btn" onclick="switchTab('website')">
+                    <i data-lucide="globe"></i>
+                    <span>Site Audit</span>
+                </button>
+                <button class="nav-btn" onclick="switchTab('bulk')">
+                    <i data-lucide="layers"></i>
+                    <span>Bulk Engine</span>
+                </button>
+                <button class="nav-btn" onclick="switchTab('names')">
+                    <i data-lucide="at-sign"></i>
+                    <span>Name Extract</span>
+                </button>
+            </div>
+
+            <div class="nav-footer">
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    System Operational
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+
+            <!-- PROFILE INTELLIGENCE TAB -->
+            <section id="tab-profile" class="tab-content active">
+                <header class="section-header">
+                    <h2>Profile Intelligence</h2>
+                    <p>Extract structured data from LinkedIn profiles.</p>
+                </header>
+
+                <div class="input-panel">
+                    <div class="input-wrapper">
+                        <i data-lucide="link" class="input-icon"></i>
+                        <input type="text" id="urlInput" placeholder="https://linkedin.com/in/username"
+                            autocomplete="off">
+                    </div>
+                    <button id="scrapeBtn" onclick="scrapeProfile()">
+                        <span id="btnText">Run Analysis</span>
+                        <div id="btnLoader" class="spinner hidden"></div>
                     </button>
                 </div>
 
-                <div id="webResults" class="hidden" style="margin-top: 20px;">
-                    <div class="result-box">
-                        <h3>Analysis Results</h3>
-                        <div class="insight-row">
-                            <div class="label">🎯 Direct Goal</div>
-                            <div class="value" id="directGoalVal"></div>
-                        </div>
-
-                        <div class="insight-row">
-                            <div class="label">🖱️ Primary CTA</div>
-                            <div class="value">
-                                <span id="primaryCtaVal" style="font-weight: 600; color: var(--primary);"></span>
-                                <span id="ctaDestVal"
-                                    style="font-size: 0.85em; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; margin-left: 8px; color: var(--text-muted);"></span>
+                <div id="resultsArea" class="results-container hidden">
+                    <div class="result-card">
+                        <div class="card-header">
+                            <h3><i data-lucide="activity"></i> Extraction Result</h3>
+                            <div class="actions">
+                                <button class="icon-btn" onclick="copyToClipboard('jsonOutput')" title="Copy JSON">
+                                    <i data-lucide="copy"></i>
+                                </button>
+                                <button class="text-btn toggle-json" onclick="toggleJson()">View Raw</button>
                             </div>
                         </div>
-
-                        <div class="insight-row" id="allCtasContainer" style="margin-top: -8px; margin-bottom: 20px;">
-                            <div class="label" style="font-size: 0.65rem; opacity: 0.8;">Other CTAs Detected</div>
-                            <div id="allCtasVal"
-                                style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;"></div>
+                        <div class="data-grid" id="profileGrid">
+                            <!-- Dynamic Content Injected Here -->
                         </div>
-
-                        <div class="insight-row">
-                            <div class="label">🚧 Roadblock</div>
-                            <div class="value" id="roadblockVal" style="color: #ff6b6b;"></div>
-                        </div>
-
-                        <div class="insight-row">
-                            <div class="label">👥 Audience</div>
-                            <div class="value" id="audienceVal"></div>
-                        </div>
-
-                        <pre id="webJsonOutput" class="hidden"></pre>
-                        <div class="json-toggle" onclick="toggleWebJson()" style="margin-top: 15px;">Show Raw JSON</div>
+                        <pre id="jsonOutput" class="code-block hidden"></pre>
                     </div>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <div id="errorArea" class="card error-card hidden">
-            <div class="error-icon">⚠️</div>
-            <div id="errorMessage">An error occurred.</div>
-        </div>
+            <!-- WEBSITE AUDIT TAB -->
+            <section id="tab-website" class="tab-content">
+                <header class="section-header">
+                    <h2>Website Audit</h2>
+                    <p>Analyze landing pages for conversion optimization.</p>
+                </header>
+
+                <div class="input-panel">
+                    <div class="input-wrapper">
+                        <i data-lucide="globe" class="input-icon"></i>
+                        <input type="text" id="websiteInput" placeholder="https://example.com" autocomplete="off">
+                    </div>
+                    <button id="websiteBtn" onclick="scrapeWebsite()">
+                        <span id="webBtnText">Start Audit</span>
+                        <div id="webBtnLoader" class="spinner hidden"></div>
+                    </button>
+                </div>
+
+                <div id="webResults" class="results-container hidden">
+                    <!-- High Level Metrics -->
+                    <div class="metrics-row">
+                        <div class="metric-card">
+                            <span class="label">Page Type</span>
+                            <span class="value" id="pageTypeVal">--</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="label">Primary Goal</span>
+                            <span class="value" id="directGoalVal">--</span>
+                        </div>
+                    </div>
+
+                    <div class="metrics-row">
+                        <div class="metric-card">
+                            <span class="label">✅ Strengths</span>
+                            <span class="value state-positive" id="strengthsVal">--</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="label">⚠️ Roadblock</span>
+                            <span class="value state-critical" id="roadblockVal">--</span>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Analysis -->
+                    <div class="result-card mt-4">
+                        <div class="card-header">
+                            <h3><i data-lucide="mouse-pointer"></i> Call to Action Analysis</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="detail-row">
+                                <span class="detail-label">Primary CTA</span>
+                                <span class="detail-value highlight" id="primaryCtaVal">--</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Destination</span>
+                                <span class="detail-value mono" id="ctaDestVal">--</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Logical Action</span>
+                                <span class="detail-value" id="logicalActionVal">--</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Other CTAs</span>
+                                <span class="detail-value muted" id="allCtasVal">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="result-card mt-4">
+                        <div class="card-header">
+                            <h3><i data-lucide="users"></i> Audience Insight</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="detail-row col">
+                                <span class="detail-value" id="audienceVal">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dev-tools">
+                        <button class="text-btn" onclick="toggleWebJson()">Toggle Raw JSON</button>
+                        <pre id="webJsonOutput" class="code-block hidden"></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BULK PROCESSING TAB -->
+            <section id="tab-bulk" class="tab-content">
+                <header class="section-header">
+                    <h2>Bulk Engine</h2>
+                    <p>Process large datasets efficiently.</p>
+                </header>
+
+                <div class="bulk-config-panel">
+                    <div class="mode-selector">
+                        <label class="radio-card">
+                            <input type="radio" name="bulkMode" value="linkedin" checked onchange="toggleBulkMode()">
+                            <div class="radio-content">
+                                <i data-lucide="linkedin"></i>
+                                <span>LinkedIn Profiles</span>
+                            </div>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="bulkMode" value="website" onchange="toggleBulkMode()">
+                            <div class="radio-content">
+                                <i data-lucide="layout-template"></i>
+                                <span>Websites</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div id="extractOnlyOption" class="checkbox-wrapper">
+                        <input type="checkbox" id="extractOnlyCheck">
+                        <label for="extractOnlyCheck">Fast Mode: Extract URL Only (Skip Analysis)</label>
+                    </div>
+
+                    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                        <div class="upload-content">
+                            <i data-lucide="upload-cloud"></i>
+                            <span id="fileName">Click to upload CSV or Excel</span>
+                            <span class="sub-text">Drag and drop supported</span>
+                        </div>
+                        <input type="file" id="fileInput" hidden accept=".csv,.xlsx">
+                    </div>
+
+                    <button id="bulkBtn" class="primary-btn full-width" onclick="startBulkProcess()">
+                        <span id="bulkBtnText">Initialize Bulk Process</span>
+                        <div id="bulkBtnLoader" class="spinner hidden"></div>
+                    </button>
+                </div>
+
+                <div id="bulkProgressArea" class="results-container hidden">
+                    <div class="progress-card">
+                        <div class="progress-header">
+                            <span id="progressStatus">Processing...</span>
+                            <span id="progressPercent">0%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div id="progressBar" class="progress-fill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="downloadArea" class="download-state hidden">
+                    <div class="success-icon">
+                        <i data-lucide="check-circle"></i>
+                    </div>
+                    <h3>Processing Complete</h3>
+                    <button class="download-btn" onclick="downloadBulkResults()">
+                        <i data-lucide="download"></i> Download Report
+                    </button>
+                </div>
+            </section>
+
+            <!-- FIRST NAME EXTRACTOR TAB -->
+            <section id="tab-names" class="tab-content">
+                <header class="section-header">
+                    <h2>First Name Extractor</h2>
+                    <p>Upload a CSV with LinkedIn profile URLs to extract first names.</p>
+                </header>
+
+                <div class="bulk-config-panel">
+                    <div class="upload-zone" id="namesDropZone"
+                        onclick="document.getElementById('namesFileInput').click()">
+                        <div class="upload-content">
+                            <i data-lucide="upload-cloud"></i>
+                            <span id="namesFileName">Click to upload CSV or Excel</span>
+                            <span class="sub-text">File must have a column with LinkedIn URLs</span>
+                        </div>
+                        <input type="file" id="namesFileInput" hidden accept=".csv,.xlsx">
+                    </div>
+
+                    <button id="namesBtn" class="primary-btn full-width" onclick="startNameExtract()">
+                        <span id="namesBtnText">Extract First Names</span>
+                        <div id="namesBtnLoader" class="spinner hidden"></div>
+                    </button>
+                </div>
+
+                <div id="namesProgressArea" class="results-container hidden">
+                    <div class="progress-card">
+                        <div class="progress-header">
+                            <span id="namesProgressStatus">Processing...</span>
+                            <span id="namesProgressPercent">0%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div id="namesProgressBar" class="progress-fill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="namesDownloadArea" class="download-state hidden">
+                    <div class="success-icon">
+                        <i data-lucide="check-circle"></i>
+                    </div>
+                    <h3>Extraction Complete</h3>
+                    <button class="download-btn" onclick="downloadNameResults()">
+                        <i data-lucide="download"></i> Download Results
+                    </button>
+                </div>
+            </section>
+
+            <!-- LIVE LOGS CONSOLE -->
+            <section class="console-section">
+                <div class="console-header">
+                    <div class="header-left">
+                        <i data-lucide="terminal"></i>
+                        <span>Live Activity Signal</span>
+                    </div>
+                    <div class="header-right">
+                        <span class="pulse-indicator"></span>
+                        <span id="connectionStatus">Connected</span>
+                    </div>
+                </div>
+                <div class="console-body" id="logConsole">
+                    <div class="log-entry system">System initialized. Awaiting process...</div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <div id="errorToast" class="toast hidden">
+        <i data-lucide="alert-circle"></i>
+        <span id="errorMessage">Error message</span>
     </div>
 
     <script src="script.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 
 </html>
