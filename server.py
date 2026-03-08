@@ -33,6 +33,26 @@ def index():
 def static_files(path):
     return send_from_directory('public', path)
 
+@app.route('/api/health')
+def health_check():
+    import shutil
+    info = {
+        "status": "ok",
+        "openrouter_key_set": bool(os.getenv("OPENROUTER_API_KEY")),
+        "li_at_set": bool(os.getenv("LI_AT")),
+        "playwright_browsers_path": os.getenv("PLAYWRIGHT_BROWSERS_PATH", "(default)"),
+    }
+    # Check if chromium binary exists
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
+            browser.close()
+            info["chromium"] = "ok"
+    except Exception as e:
+        info["chromium"] = f"FAILED: {str(e)}"
+    return jsonify(info)
+
 @app.route('/api/logs')
 def stream_logs():
     def generate():
@@ -109,9 +129,9 @@ def scrape_website():
         
     except Exception as e:
          import traceback
-         traceback.print_exc()
-         print(f"Website scrape error: {repr(e)}")
-         return jsonify({"error": f"Server Error: {str(e)}"}), 500
+         tb = traceback.format_exc()
+         print(tb)
+         return jsonify({"error": f"Server Error: {str(e)}", "traceback": tb}), 500
 
 def run_bulk_analysis(job_id, df, li_at, extract_only=False):
     results = []
@@ -568,9 +588,9 @@ def personalize():
 
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        print(f"Personalize error: {repr(e)}")
-        return jsonify({"error": f"Server Error: {str(e)}"}), 500
+        tb = traceback.format_exc()
+        print(tb)
+        return jsonify({"error": f"Server Error: {str(e)}", "traceback": tb}), 500
 
 
 if __name__ == '__main__':
