@@ -19,8 +19,8 @@ def scrape_linkedin_profile(profile_url: str, headless: bool = True, li_at_cooki
         import random
         selected_ua = random.choice(user_agents)
 
-        # Use Edge channel to avoid bundled Chromium network issues
-        browser = p.chromium.launch(headless=headless, channel="msedge")
+        # Use plain Chromium (msedge not available on Linux/Render)
+        browser = p.chromium.launch(headless=headless, args=["--no-sandbox", "--disable-dev-shm-usage"])
         
         # Prepare context options with modern User Agent and more stealthy headers
         context_args = {
