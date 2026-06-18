@@ -24,13 +24,18 @@
             </div>
 
             <div class="nav-links">
+                <button class="nav-btn" onclick="switchTab('discover')">
+                    <i data-lucide="radar"></i>
+                    <span>Lead Finder</span>
+                    <span class="nav-badge" id="navLeadCount" style="display:none"></span>
+                </button>
                 <button class="nav-btn active" onclick="switchTab('profile')">
                     <i data-lucide="user"></i>
                     <span>Profile Data</span>
                 </button>
                 <button class="nav-btn" onclick="switchTab('website')">
-                    <i data-lucide="globe"></i>
-                    <span>Site Audit</span>
+                    <i data-lucide="message-circle"></i>
+                    <span>Hook Gen</span>
                 </button>
                 <button class="nav-btn" onclick="switchTab('bulk')">
                     <i data-lucide="layers"></i>
@@ -52,6 +57,168 @@
 
         <!-- Main Content Area -->
         <main class="content-area">
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- LEAD FINDER TAB                                             -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <section id="tab-discover" class="tab-content">
+                <header class="section-header">
+                    <div class="section-header-top">
+                        <div>
+                            <h2>Lead Finder</h2>
+                            <p>Auto-discover LinkedIn profiles of coaches in UK, USA, Canada &amp; Australia using Google Dorking with rotating proxies.</p>
+                        </div>
+                        <div class="lead-count-badge" id="leadsFileBadge">
+                            <i data-lucide="database"></i>
+                            <span id="leadsFileCount">0</span> leads in file
+                        </div>
+                    </div>
+                </header>
+
+                <div class="discover-grid">
+
+                    <!-- LEFT: Find Leads Panel -->
+                    <div class="discover-panel">
+                        <div class="panel-label">
+                            <i data-lucide="search"></i>
+                            Step 1 — Discover Leads
+                        </div>
+
+                        <div class="config-row">
+                            <div class="config-field">
+                                <label>Max Leads Target</label>
+                                <input type="number" id="maxLeadsTarget" value="200" min="10" max="2000" step="10">
+                            </div>
+                            <div class="config-field">
+                                <label>Pages per Query</label>
+                                <input type="number" id="maxPagesPerDork" value="3" min="1" max="10">
+                            </div>
+                            <div class="config-field" style="display:flex; align-items:center; gap:8px;">
+                                <input type="checkbox" id="prequalifyToggle" checked style="width:16px; height:16px; accent-color:var(--primary-color);">
+                                <label for="prequalifyToggle" style="margin:0; cursor:pointer;" title="Uses Layer 2 Cache Verification. Disable for massive volume but more false positives.">Prequalify Leads (Layer 2)</label>
+                            </div>
+                        </div>
+
+                        <div class="dork-tags">
+                            <span class="dork-tag">Business Coach</span>
+                            <span class="dork-tag">Life Coach</span>
+                            <span class="dork-tag">Career Coach</span>
+                            <span class="dork-tag">Executive Coach</span>
+                            <span class="dork-tag">UK · USA · Canada · Australia</span>
+                        </div>
+
+                        <button id="findLeadsBtn" class="primary-btn full-width discover-btn" onclick="startLeadDiscovery()">
+                            <i data-lucide="radar"></i>
+                            <span id="findLeadsBtnText">Find Leads</span>
+                            <div id="findLeadsLoader" class="spinner hidden"></div>
+                        </button>
+
+                        <!-- Discovery Progress -->
+                        <div id="discoveryProgress" class="hidden">
+                            <div class="stage-indicator" id="stageIndicator">
+                                <div class="stage-step" id="stage-searching">
+                                    <div class="stage-dot"></div>
+                                    <span>Searching Google</span>
+                                </div>
+                                <div class="stage-step" id="stage-completed">
+                                    <div class="stage-dot"></div>
+                                    <span>Saving Leads</span>
+                                </div>
+                            </div>
+
+                            <div class="progress-card" style="margin-top:16px">
+                                <div class="progress-header">
+                                    <span id="discoveryStatusText">Initialising...</span>
+                                    <span id="discoveryFoundCount" class="found-count">0 found</span>
+                                </div>
+                                <div class="progress-track">
+                                    <div id="discoveryProgressBar" class="progress-fill discovery-fill"></div>
+                                </div>
+                                <p id="discoveryMessage" class="discovery-msg"></p>
+                            </div>
+
+                            <button id="stopDiscoveryBtn" class="stop-btn" onclick="stopLeadDiscovery()">
+                                <i data-lucide="square"></i> Stop &amp; Save Current
+                            </button>
+                        </div>
+
+                        <!-- Success state -->
+                        <div id="discoverySuccess" class="discovery-success hidden">
+                            <div class="success-pill">
+                                <i data-lucide="check-circle-2"></i>
+                                <span id="discoverySuccessMsg">Discovery complete</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Saved Leads Panel -->
+                    <div class="discover-panel">
+                        <div class="panel-label">
+                            <i data-lucide="list"></i>
+                            Step 2 — Saved Leads
+                            <button class="icon-btn refresh-btn" onclick="loadLeads()" title="Refresh">
+                                <i data-lucide="refresh-cw"></i>
+                            </button>
+                        </div>
+
+                        <!-- Process controls -->
+                        <div class="process-controls">
+                            <button id="processLeadsBtn" class="primary-btn process-btn" onclick="startProcessLeads()">
+                                <i data-lucide="play-circle"></i>
+                                <span id="processLeadsBtnText">Process Leads</span>
+                                <div id="processLeadsLoader" class="spinner hidden"></div>
+                            </button>
+                            <button class="primary-btn download-btn-alt" onclick="downloadSavedLeads()">
+                                <i data-lucide="download"></i>
+                                Download Leads
+                            </button>
+                            <button class="danger-btn" onclick="confirmClearLeads()">
+                                <i data-lucide="trash-2"></i>
+                                Clear All
+                            </button>
+                        </div>
+
+                        <!-- Process progress -->
+                        <div id="processProgress" class="hidden">
+                            <div class="progress-card" style="margin-top:12px">
+                                <div class="progress-header">
+                                    <span id="processStatusText">Processing...</span>
+                                    <span id="processPercent">0%</span>
+                                </div>
+                                <div class="progress-track">
+                                    <div id="processProgressBar" class="progress-fill"></div>
+                                </div>
+                            </div>
+                            <button class="stop-btn" onclick="stopProcessLeads()">
+                                <i data-lucide="square"></i> Stop &amp; Download
+                            </button>
+                        </div>
+
+                        <!-- Process complete download -->
+                        <div id="processDownload" class="hidden" style="margin-top:12px">
+                            <button class="download-btn full-width" onclick="downloadProcessResults()">
+                                <i data-lucide="download"></i> Download Results
+                            </button>
+                        </div>
+
+                        <!-- Leads list -->
+                        <div class="leads-list-wrap">
+                            <div class="leads-list-header">
+                                <span id="leadsListCount">0 leads saved</span>
+                                <span class="dedup-badge">
+                                    <i data-lucide="shield-check"></i> Auto-deduped
+                                </span>
+                            </div>
+                            <div class="leads-list" id="leadsList">
+                                <div class="leads-empty">
+                                    <i data-lucide="inbox"></i>
+                                    <p>No leads yet. Run discovery first.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
             <!-- PROFILE INTELLIGENCE TAB -->
             <section id="tab-profile" class="tab-content active">
@@ -91,11 +258,11 @@
                 </div>
             </section>
 
-            <!-- WEBSITE AUDIT TAB -->
+            <!-- HOOK GENERATOR TAB -->
             <section id="tab-website" class="tab-content">
                 <header class="section-header">
-                    <h2>Website Audit</h2>
-                    <p>Analyze landing pages for conversion optimization.</p>
+                    <h2>Hook Generator</h2>
+                    <p>Generate a personalized cold email opening line from any website.</p>
                 </header>
 
                 <div class="input-panel">
@@ -104,68 +271,23 @@
                         <input type="text" id="websiteInput" placeholder="https://example.com" autocomplete="off">
                     </div>
                     <button id="websiteBtn" onclick="scrapeWebsite()">
-                        <span id="webBtnText">Start Audit</span>
+                        <span id="webBtnText">Generate Hook</span>
                         <div id="webBtnLoader" class="spinner hidden"></div>
                     </button>
                 </div>
 
                 <div id="webResults" class="results-container hidden">
-                    <!-- High Level Metrics -->
-                    <div class="metrics-row">
-                        <div class="metric-card">
-                            <span class="label">Page Type</span>
-                            <span class="value" id="pageTypeVal">--</span>
-                        </div>
-                        <div class="metric-card">
-                            <span class="label">Primary Goal</span>
-                            <span class="value" id="directGoalVal">--</span>
-                        </div>
-                    </div>
-
-                    <div class="metrics-row">
-                        <div class="metric-card">
-                            <span class="label">✅ Strengths</span>
-                            <span class="value state-positive" id="strengthsVal">--</span>
-                        </div>
-                        <div class="metric-card">
-                            <span class="label">⚠️ Roadblock</span>
-                            <span class="value state-critical" id="roadblockVal">--</span>
-                        </div>
-                    </div>
-
-                    <!-- Detailed Analysis -->
-                    <div class="result-card mt-4">
+                    <div class="result-card">
                         <div class="card-header">
-                            <h3><i data-lucide="mouse-pointer"></i> Call to Action Analysis</h3>
+                            <h3><i data-lucide="message-circle"></i> Generated Hook</h3>
+                            <div class="actions">
+                                <button class="icon-btn" onclick="copyHookToClipboard()" title="Copy Hook">
+                                    <i data-lucide="copy"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
-                            <div class="detail-row">
-                                <span class="detail-label">Primary CTA</span>
-                                <span class="detail-value highlight" id="primaryCtaVal">--</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Destination</span>
-                                <span class="detail-value mono" id="ctaDestVal">--</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Logical Action</span>
-                                <span class="detail-value" id="logicalActionVal">--</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Other CTAs</span>
-                                <span class="detail-value muted" id="allCtasVal">--</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="result-card mt-4">
-                        <div class="card-header">
-                            <h3><i data-lucide="users"></i> Audience Insight</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="detail-row col">
-                                <span class="detail-value" id="audienceVal">--</span>
-                            </div>
+                            <p class="hook-output" id="hookVal">--</p>
                         </div>
                     </div>
 
@@ -195,8 +317,8 @@
                         <label class="radio-card">
                             <input type="radio" name="bulkMode" value="website" onchange="toggleBulkMode()">
                             <div class="radio-content">
-                                <i data-lucide="layout-template"></i>
-                                <span>Websites</span>
+                                <i data-lucide="message-square"></i>
+                                <span>Bulk Hook Gen (Websites)</span>
                             </div>
                         </label>
                     </div>
@@ -215,6 +337,17 @@
                         <input type="file" id="fileInput" hidden accept=".csv,.xlsx">
                     </div>
 
+                    <div class="row-range-selector" style="display: flex; gap: 12px; align-items: center; margin-top: 12px;">
+                        <div style="flex: 1;">
+                            <label for="startRow" style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px; display: block;">Start Row</label>
+                            <input type="number" id="startRow" min="1" value="1" placeholder="1" style="width: 100%; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-main); font-size: 14px;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label for="endRow" style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px; display: block;">End Row</label>
+                            <input type="number" id="endRow" min="1" placeholder="All" style="width: 100%; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-main); font-size: 14px;">
+                        </div>
+                    </div>
+
                     <button id="bulkBtn" class="primary-btn full-width" onclick="startBulkProcess()">
                         <span id="bulkBtnText">Initialize Bulk Process</span>
                         <div id="bulkBtnLoader" class="spinner hidden"></div>
@@ -231,6 +364,10 @@
                             <div id="progressBar" class="progress-fill"></div>
                         </div>
                     </div>
+                    <button id="stopBulkBtn" class="primary-btn full-width" style="margin-top: 15px; background: rgba(248,81,73,0.15); color: #f85149; border: 1px solid rgba(248,81,73,0.3);" onclick="stopBulkProcess()">
+                        <span id="stopBtnText">Stop Processing &amp; Download</span>
+                        <div id="stopBtnLoader" class="spinner hidden"></div>
+                    </button>
                 </div>
 
                 <div id="downloadArea" class="download-state hidden">
@@ -316,10 +453,24 @@
         <span id="errorMessage">Error message</span>
     </div>
 
+    <!-- Confirm modal for clear leads -->
+    <div id="confirmModal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-icon"><i data-lucide="trash-2"></i></div>
+            <h3>Clear All Leads?</h3>
+            <p>This will permanently delete all saved leads from the file. This cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="modal-cancel" onclick="closeConfirmModal()">Cancel</button>
+                <button class="modal-confirm" onclick="executeClearLeads()">Clear All</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
     <script>
         lucide.createIcons();
     </script>
+
 </body>
 
 </html>

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import base64
 import json
 import time
 from playwright.sync_api import Page, sync_playwright
 
 
-def _scroll_page(page, steps: int = 6, delay_s: float = 0.6) -> None:
+def _scroll_page(page, steps: int = 3, delay_s: float = 0.3) -> None:
     for _ in range(steps):
         page.mouse.wheel(0, 800)
         time.sleep(delay_s)
@@ -31,12 +32,88 @@ def _follow_linkedin_redirect(page: Page) -> None:
     print(f"Found actual URL: {actual_url}")
     page.goto(actual_url, timeout=45000, wait_until="domcontentloaded")
     try:
-        page.wait_for_load_state("networkidle", timeout=8000)
+        page.wait_for_load_state("networkidle", timeout=4000)
     except Exception:
         print("Network idle timeout after LinkedIn redirect.")
+    
+    # Check if the page we landed on is still the LinkedIn warning page
+    try:
+        if page.locator("h1", has_text="not on LinkedIn").count() > 0:
+            print("Redirect failed. Stuck on LinkedIn warning page.")
+            page.evaluate("() => document.body.innerHTML = 'leaving linkedin failed'") # force bot detection flag
+    except Exception:
+        pass
+
+
+def _dismiss_cookie_popups(page: Page) -> None:
+    """Try to dismiss cookie consent popups so real content is visible."""
+    # Common selectors for cookie accept/dismiss buttons
+    cookie_selectors = [
+        'button:has-text("Accept")',
+        'button:has-text("Accept All")',
+        'button:has-text("Accept Cookies")',
+        'button:has-text("I Accept")',
+        'button:has-text("Got it")',
+        'button:has-text("OK")',
+        'button:has-text("Agree")',
+        'button:has-text("Close")',
+        'button:has-text("Allow")',
+        'button:has-text("Allow All")',
+        '[id*="cookie"] button',
+        '[class*="cookie"] button',
+        '[id*="consent"] button',
+        '[class*="consent"] button',
+        '[id*="gdpr"] button',
+        '[class*="gdpr"] button',
+    ]
+    
+    dismissed = False
+    for selector in cookie_selectors:
+        try:
+            btn = page.locator(selector).first
+            btn.wait_for(state='visible', timeout=500)
+            btn.click(timeout=2000)
+            dismissed = True
+            time.sleep(0.15)
+            break
+        except Exception:
+            continue
+    
+    if dismissed:
+        print("Cookie consent popup dismissed.")
+    
+    # Also remove common cookie overlay elements from DOM
+    page.evaluate("""() => {
+        const selectors = [
+            '[id*="cookie"]', '[class*="cookie"]',
+            '[id*="consent"]', '[class*="consent"]',
+            '[id*="gdpr"]', '[class*="gdpr"]',
+            '[class*="cc-"]', '#cc-main',
+            '[class*="CookieConsent"]', '[class*="cookie-banner"]',
+            '[class*="cookie-notice"]', '[class*="cookie-popup"]'
+        ];
+        for (const sel of selectors) {
+            try {
+                document.querySelectorAll(sel).forEach(el => {
+                    // Only remove if it looks like a popup/overlay (fixed/sticky positioning)
+                    const style = window.getComputedStyle(el);
+                    if (style.position === 'fixed' || style.position === 'sticky' || 
+                        style.zIndex > 100 || el.getAttribute('role') === 'dialog') {
+                        el.remove();
+                    }
+                });
+            } catch(e) {}
+        }
+    }""")
 
 
 def _extract_visible_text(page: Page) -> str:
+    # Strip noise elements first
+    try:
+        page.evaluate("() => { document.querySelectorAll('nav, header, footer, aside, [role=\"navigation\"]').forEach(el => el.remove()); }")
+    except Exception as e:
+        print(f"Noise stripping failed: {e}")
+
     content_locator = page.locator("main")
     if content_locator.count() == 0:
         content_locator = page.locator("body")
@@ -46,6 +123,13 @@ def _extract_visible_text(page: Page) -> str:
         text = page.locator("body").inner_text().strip()
     if not text:
         text = page.evaluate("() => document.body ? document.body.innerText : ''").strip()
+        
+    # Bot / garbage detection
+    lower_text = text.lower()
+    if "verify you are human" in lower_text or "cloudflare" in lower_text or "checking if the site connection is secure" in lower_text or "leaving linkedin" in lower_text:
+        print("Bot challenge or redirect warning detected. Aborting scrape.")
+        return ""
+        
     return text
 
 
@@ -97,17 +181,19 @@ def _extract_structural_signals(page: Page) -> dict:
         ];
 
         const allTextBlocks = document.querySelectorAll(
-            'p, span, div, blockquote, figcaption, cite, li, h2, h3, h4, h5, h6, section'
+            'p, blockquote, figcaption, cite, li, h2, h3, h4, h5, h6, section'
         );
 
-        allTextBlocks.forEach(el => {
-            const text = (el.innerText || '').toLowerCase().trim();
-            if (!text || text.length < 3) return;
+        let count = 0;
+        for (const el of allTextBlocks) {
+            if (count > 500) break; // safeguard
+            count++;
+            const text = (el.textContent || '').toLowerCase().trim();
+            if (!text || text.length < 3) continue;
 
             for (const kw of socialKeywords) {
                 if (text.includes(kw)) {
-                    // Get a short snippet
-                    const snippet = el.innerText.trim().substring(0, 200);
+                    const snippet = (el.textContent || '').trim().substring(0, 200);
                     if (snippet.length > 5) {
                         result.social_proof_signals.push({
                             type: 'text_match',
@@ -118,7 +204,7 @@ def _extract_structural_signals(page: Page) -> dict:
                     break;
                 }
             }
-        });
+        }
 
         // 2. Look for blockquotes (common for testimonials)
         document.querySelectorAll('blockquote').forEach(bq => {
@@ -202,9 +288,17 @@ def _extract_structural_signals(page: Page) -> dict:
         result.social_proof_count = result.social_proof_signals.length;
 
         // ── CTAs (buttons and prominent links) ──
+        const cookieWords = ['cookie', 'consent', 'gdpr', 'privacy', 'preferences', 'analytics',
+                            'functional', 'performance', 'advertisement', 'necessary', 'accept all',
+                            'reject all', 'save & accept', 'cookie settings', 'manage cookies',
+                            'configure', 'decline'];
+        function isCookieRelated(text) {
+            const lower = text.toLowerCase();
+            return cookieWords.some(w => lower === w || lower === w + 's');
+        }
         document.querySelectorAll('button, [role="button"], input[type="submit"]').forEach(btn => {
             const text = (btn.innerText || btn.value || '').trim();
-            if (text && text.length > 0 && text.length < 100) {
+            if (text && text.length > 0 && text.length < 100 && !isCookieRelated(text)) {
                 result.cta_buttons.push({
                     text: text,
                     tag: btn.tagName.toLowerCase(),
@@ -283,13 +377,18 @@ def _do_scrape(p, url: str, headless: bool, extra_args: list | None = None, rich
 
     try:
         print(f"Navigating to {url}...")
-        page.goto(url, timeout=60000, wait_until="domcontentloaded")
-        time.sleep(2)
+        page.goto(url, timeout=20000, wait_until="domcontentloaded")
         
         try:
-            page.wait_for_load_state("networkidle", timeout=10000)
+            page.wait_for_load_state("networkidle", timeout=5000)
         except Exception:
             print("Network idle timeout, continuing with rendered content.")
+
+        # Auto-dismiss cookie consent popups
+        try:
+            _dismiss_cookie_popups(page)
+        except Exception as e:
+            print(f"Cookie dismiss warning: {e}")
 
         try:
             _follow_linkedin_redirect(page)
@@ -308,9 +407,12 @@ def _do_scrape(p, url: str, headless: bool, extra_args: list | None = None, rich
                 print(f"Warning: structural signal extraction failed: {e}")
                 signals = {}
             
+            screenshot_b64 = None  # Disabled for speed — not used by LLM
+            
             return {
                 "visible_text": text or "",
-                "structural_signals": signals
+                "structural_signals": signals,
+                "screenshot_b64": screenshot_b64
             } if (text or signals) else None
         
         return text or None

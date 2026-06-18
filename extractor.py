@@ -6,13 +6,13 @@ def extract_profile_data(profile_text: str) -> dict | None:
     """
     Sends profile text to OpenRouter API to extract specific fields into JSON.
     """
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        print("Error: OPENROUTER_API_KEY not found in environment variables.")
+        print("Error: GROQ_API_KEY not found in environment variables.")
         return None
 
     client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
+        base_url="https://api.groq.com/openai/v1",
         api_key=api_key,
     )
 
@@ -47,12 +47,13 @@ CONSTRAINTS:
 
     try:
         completion = client.chat.completions.create(
-            model="openai/gpt-4o-mini", # Upgraded for better reasoning
+            model="llama-3.3-70b-versatile", # Using Groq's fast reasoning model
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Profile Text:\n{profile_text}"}
             ],
-            temperature=0, 
+            temperature=0,
+            timeout=15.0
         )
 
         content = completion.choices[0].message.content.strip()

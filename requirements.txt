@@ -5,3 +5,8 @@ flask
 flask-cors
 pandas
 openpyxl
+requests
+beautifulsoup4
+lxml
+urllib3
+gspread

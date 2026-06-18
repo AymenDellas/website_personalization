@@ -1,0 +1,43 @@
+{
+  "job_titles": [
+    "Business Coach",
+    "Life Coach",
+    "Career Coach",
+    "Executive Coach",
+    "Leadership Coach",
+    "Performance Coach",
+    "Business Mentor",
+    "Life Mentor",
+    "Career Mentor",
+    "Executive Mentor"
+  ],
+  "locations": [
+    "United Kingdom",
+    "London",
+    "Manchester",
+    "Birmingham",
+    "United States",
+    "New York",
+    "Los Angeles",
+    "Chicago",
+    "Canada",
+    "Toronto",
+    "Vancouver",
+    "Australia",
+    "Sydney",
+    "Melbourne"
+  ],
+  "negative_keywords": [
+    "recruiter",
+    "software engineer",
+    "developer",
+    "sales manager",
+    "project manager",
+    "product manager",
+    "human resources",
+    "real estate"
+  ],
+  "max_pages_per_dork": 3,
+  "max_urls_target": 500,
+  "prequalify": true
+}

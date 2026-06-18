@@ -1,118 +1,116 @@
-
 import os
 import json
+import time
 from openai import OpenAI
 
-def extract_website_data(website_text: str, structural_signals: dict | None = None) -> dict | None:
+def extract_website_data(website_text: str, structural_signals: dict | None = None, screenshot_b64: str | None = None) -> dict | None:
     """
-    Analyzes website text + structural signals using AI to extract 
-    accurate, evidence-based landing page insights.
+    Analyzes website text + structural signals using AI
+    to generate a single personalized hook line for cold email outreach.
+    Primary: Groq (llama-3.3-70b-versatile) with automatic fallback across multiple keys.
+    Fallback: Cerebras (llama3.1-8b).
     """
-    api_key = os.getenv("OPENROUTER_API_KEY")
-    if not api_key:
-        print("Error: OPENROUTER_API_KEY not found.")
+    cerebras_key = os.getenv("CEREBRAS_API_KEY")
+    groq_key_1 = os.getenv("GROQ_API_KEY")
+    groq_key_2 = os.getenv("GROQ_API_KEY_2")
+    
+    groq_keys = [k for k in [groq_key_1, groq_key_2] if k]
+    
+    if not cerebras_key and not groq_keys:
+        print("Error: No API keys found.", flush=True)
         return None
 
-    client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key,
-    )
+    # Setup clients in order of preference
+    clients = []
+    for idx, key in enumerate(groq_keys):
+        clients.append(("Groq (Key " + str(idx+1) + ")", "llama-3.3-70b-versatile", OpenAI(base_url="https://api.groq.com/openai/v1", api_key=key)))
+    if cerebras_key:
+        clients.append(("Cerebras", "llama3.1-8b", OpenAI(base_url="https://api.cerebras.ai/v1", api_key=cerebras_key)))
 
-    system_prompt = """You are an expert landing page conversion analyst. Your job is to perform a thorough, honest audit.
+    system_prompt = """You are an expert at writing personalized cold email opening lines for a funnel agency targeting coaches.
 
-RULES FOR ACCURACY:
-1. For SOCIAL PROOF specifically: check the structural_signals data. If social_proof_count > 0, social proof EXISTS — acknowledge it in strengths, do NOT flag it as missing.
-2. For HEADLINES specifically: read the actual h1/h2 text from structural signals. A headline that states a benefit, outcome, or clear value proposition is NOT ambiguous. Only flag a headline as ambiguous if it truly gives zero indication of what the page offers.
-3. For ALL OTHER friction points: be thorough and critical. Most pages have real conversion issues — find them.
+Your job is to read a coach's website and write ONE opening line that will be used as the first sentence of a cold email.
 
-Return STRICT JSON using the schema below.
+RULES:
+- The line must reference something SPECIFIC from their website: their niche, their method, their audience, their results, their story, or their positioning.
+- It must feel like the sender actually read their site, not generic flattery.
+- It must be conversational and flow naturally as a standalone sentence.
+- Max 20 words.
+- No em dashes. No quotes. No filler like "I noticed" or "I came across your site".
+- ALWAYS start with "Your" — never start with the person's name, company name, or any third-party reference.
+- Capitalize normally as a real sentence. Proper nouns capitalized.
+- Output STRICT JSON only. No markdown. No backticks.
 
 SCHEMA:
-{
-  "page_type": "vsl" | "lead-magnet" | "homepage" | "direct-to-call" | "booking_page" | "service_page" | "opt-in" | null,
-  "direct_goal": string | null,
-  "primary_cta_text": string | null,
-  "logical_cta_action": string | null,
-  "cta_destination": "calendar" | "form" | "email" | "external" | null,
-  "all_ctas_found": [string],
-  "strengths": string | null,
-  "roadblock": string | null,
-  "audience": string | null
-}
+{"hook": string}
 
-ANALYSIS PROCESS:
+GOOD EXAMPLES:
+{"hook": "Your three decades of expertise in exit strategies suggest you appreciate systems built on actual performance."}
+{"hook": "Your blend of trauma-informed coaching and corporate pricing expertise creates a powerful differentiator for executive women."}
+{"hook": "Building a practice around helping burned-out executives reclaim clarity puts you in a category most coaches never reach."}
 
-1. IDENTIFY PAGE TYPE:
-   - Classify as: vsl, lead-magnet, homepage, direct-to-call, booking_page, service_page, or opt-in.
-
-2. HEADLINE ASSESSMENT:
-   - Read the actual h1/h2 headlines from structural signals.
-   - CLEAR = communicates a specific benefit, outcome, or value prop (e.g., "Grow revenue 3x" or "AI analytics for marketers").
-   - AMBIGUOUS = vague filler with no supporting subheadline (e.g., "Welcome" or "Hello World").
-   - If ambiguous, flag it. If clear, note it as a strength.
-
-3. SOCIAL PROOF ASSESSMENT:
-   - Check structural_signals for social_proof_count.
-   - If social_proof_count > 0: social proof EXISTS. Note types present in strengths.
-   - If social_proof_count is 0 AND visible text has no testimonials/reviews/stats/trust indicators: flag as missing.
-
-4. CTA IDENTIFICATION:
-   - Use cta_buttons and cta_links from structural signals + scan visible text.
-   - List all in "all_ctas_found", pick the most prominent as primary.
-   - "logical_cta_action": translate button text to the real action (max 5-7 words).
-
-5. STRENGTHS:
-   - Identify 2-4 things the page does well.
-   - Format as comma-separated string.
-
-6. ROADBLOCK / FRICTION — BE THOROUGH:
-   - Analyze the page critically for ALL of these conversion killers:
-     * Overwhelming text / wall of text: long paragraphs without bullet points or visual breaks
-     * Form friction: too many fields, asking for phone number upfront, multi-step forms
-     * No clear CTA or CTA buried below the fold
-     * Too many competing CTAs pulling attention in different directions
-     * Navigation clutter: too many links/menus that distract from the primary goal
-     * Information gap: asking for a call/demo before explaining what the product does
-     * Unclear pricing or hidden pricing
-     * No urgency or scarcity elements
-     * Weak or generic copy that doesn't differentiate from competitors
-     * Missing social proof (ONLY if social_proof_count is 0 — see rule above)
-     * Ambiguous headline (ONLY if h1 truly has no benefit/value — see rule above)
-   - Most pages have AT LEAST 1-2 genuine friction points. Identify them honestly.
-   - Format: comma-separated list of PROBLEMS only. Do NOT suggest solutions.
-   - Only say "None identified" if the page genuinely has excellent conversion design with no issues.
-
-7. AUDIENCE:
-   - Identify the target persona based on language, offering, and industry signals.
-
-CONSTRAINTS:
-- Output JSON ONLY. No markdown wrapping.
-- Be thorough and honest. Find real problems, but do not fabricate issues about social proof or headlines when the evidence contradicts you.
+BAD EXAMPLES:
+{"hook": "I noticed you have a coaching business."} — too generic
+{"hook": "Your website is impressive."} — flattery, not specific
+{"hook": "As a life coach, you help people."} — no differentiation
+{"hook": "Alex Wisch's 360-degree approach..."} — starts with name, not "Your"
 """
 
     try:
-        # Build the user message with both text and structural context
-        truncated_text = website_text[:25000]
-        
-        user_content = f"Website Visible Text:\n{truncated_text}"
-        
-        if structural_signals:
-            # Summarize structural signals concisely to stay within token limits
-            signals_summary = _summarize_signals(structural_signals)
-            user_content += f"\n\n---\n\nSTRUCTURAL SIGNALS (extracted from HTML):\n{signals_summary}"
+        truncated_text = website_text[:8000]
+        text_content = f"Website Visible Text:\n{truncated_text}"
 
-        completion = client.chat.completions.create(
-            model="openai/gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content}
-            ],
-            temperature=0, 
-        )
+        if structural_signals:
+            signals_summary = _summarize_signals(structural_signals)
+            text_content += f"\n\n---\n\nSTRUCTURAL SIGNALS (extracted from HTML):\n{signals_summary}"
+
+        user_message = {"role": "user", "content": text_content}
+
+        completion = None
+        success = False
+        last_error = None
+        
+        for provider_name, model_name, ai_client in clients:
+            print(f"Using {provider_name} ({model_name}) for hook generation", flush=True)
+            max_retries = 2
+            
+            for attempt in range(max_retries):
+                try:
+                    completion = ai_client.chat.completions.create(
+                        model=model_name,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            user_message
+                        ],
+                        temperature=0,
+                        timeout=20.0,
+                    )
+                    success = True
+                    break
+                except Exception as e:
+                    last_error = e
+                    error_str = str(e).lower()
+                    if "429" in error_str or "rate limit" in error_str or "too many requests" in error_str or "resource_exhausted" in error_str:
+                        print(f"[{provider_name}] Rate limit hit on attempt {attempt + 1}.", flush=True)
+                        if attempt < max_retries - 1:
+                            sleep_time = (attempt + 1) * 2
+                            print(f"[{provider_name}] Waiting {sleep_time}s before retry...", flush=True)
+                            time.sleep(sleep_time)
+                        else:
+                            print(f"[{provider_name}] Exhausted retries. Moving to next fallback client...", flush=True)
+                    else:
+                        print(f"[{provider_name}] Error: {e}. Moving to fallback...", flush=True)
+                        break
+            
+            if success:
+                break
+                
+        if not success:
+            print(f"Hook extraction failed. All AI clients exhausted. Last error: {last_error}", flush=True)
+            return None
 
         content = completion.choices[0].message.content.strip()
-        
-        # Helper to parse strict JSON (strip potential markdown wrapping)
+
         if content.startswith("```json"):
             content = content[7:]
         if content.startswith("```"):
@@ -120,73 +118,86 @@ CONSTRAINTS:
         if content.endswith("```"):
             content = content[:-3]
         content = content.strip()
-        
-        return json.loads(content)
+
+        json_start = content.find('{')
+        if json_start != -1:
+            brace_count = 0
+            json_end = json_start
+            for i in range(json_start, len(content)):
+                if content[i] == '{':
+                    brace_count += 1
+                elif content[i] == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        json_end = i + 1
+                        break
+            content = content[json_start:json_end]
+
+        print(f"RAW AI OUTPUT: {content}", flush=True)
+        parsed = json.loads(content)
+        return parsed
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(f"Website Extraction error: {e}")
+        print(f"Hook extraction fatal error: {e}", flush=True)
         return None
 
 
 def _summarize_signals(signals: dict) -> str:
-    """Convert raw structural signals dict into a concise text summary for the AI."""
+    """Converts the structural signals dict from the scraper into a clean, AI-readable string."""
     parts = []
-    
-    # Page metadata
-    title = signals.get('page_title', '')
-    if title:
-        parts.append(f"Page Title: {title}")
-    
-    meta = signals.get('meta_description', '')
-    if meta:
-        parts.append(f"Meta Description: {meta}")
-    
-    # Headlines
+
+    if signals.get('page_title'):
+        parts.append(f"PAGE TITLE: {signals['page_title']}")
+    if signals.get('meta_description'):
+        parts.append(f"META DESCRIPTION: {signals['meta_description']}")
+
     headlines = signals.get('headlines', [])
     if headlines:
-        hl_list = []
-        for h in headlines[:10]:
-            hl_list.append(f"  <{h['tag']}> {h['text']}")
-        parts.append("Headlines found:\n" + "\n".join(hl_list))
-    
-    # Social proof
-    sp_count = signals.get('social_proof_count', 0)
-    sp_signals = signals.get('social_proof_signals', [])
-    parts.append(f"\nSocial Proof Elements Found: {sp_count}")
-    if sp_signals:
-        sp_list = []
-        for sp in sp_signals[:15]:  # Cap to avoid token bloat
-            sp_type = sp.get('type', 'unknown')
-            snippet = sp.get('snippet', sp.get('alt', sp.get('keyword', '')))
-            sp_list.append(f"  [{sp_type}] {snippet}")
-        parts.append("Social Proof Details:\n" + "\n".join(sp_list))
-    else:
-        parts.append("Social Proof Details: NONE DETECTED in HTML structure.")
-    
-    # CTAs
-    buttons = signals.get('cta_buttons', [])
-    links = signals.get('cta_links', [])
-    if buttons:
-        btn_texts = [b['text'] for b in buttons[:10]]
-        parts.append(f"\nCTA Buttons Found: {', '.join(btn_texts)}")
-    if links:
-        link_texts = [f"{l['text']} -> {l['href']}" for l in links[:10]]
-        parts.append(f"CTA Links Found: {', '.join(link_texts)}")
-    if not buttons and not links:
-        parts.append("\nCTA Buttons/Links: NONE DETECTED")
-    
-    # Forms
+        parts.append("HEADLINES FOUND ON PAGE:")
+        for h in headlines[:8]:
+            parts.append(f"  [{h.get('tag', 'h?')}] {h.get('text', '')}")
+
+    cta_buttons = signals.get('cta_buttons', [])
+    if cta_buttons:
+        parts.append(f"\nCTA BUTTONS ({len(cta_buttons)} found):")
+        for btn in cta_buttons[:5]:
+            parts.append(f"  • Button: \"{btn.get('text', '')}\"")
+
+    cta_links = signals.get('cta_links', [])
+    if cta_links:
+        parts.append(f"\nCTA LINKS ({len(cta_links)} found):")
+        for link in cta_links[:5]:
+            href = link.get('href', '')
+            text = link.get('text', '')
+            parts.append(f"  • Link: \"{text}\" → {href}")
+
     forms = signals.get('forms', [])
     if forms:
-        for i, f in enumerate(forms[:3]):
-            field_labels = [fld.get('label', fld.get('type', '?')) for fld in f.get('fields', [])]
-            parts.append(f"Form {i+1}: {f['field_count']} fields ({', '.join(field_labels)})")
-    
-    # Images
+        parts.append(f"\nFORMS ({len(forms)} found):")
+        for form in forms[:3]:
+            if isinstance(form, dict):
+                fields = form.get('fields', [])
+                parts.append(f"  • Form with {len(fields)} fields: {', '.join(f.get('type', 'text') if isinstance(f, dict) else str(f) for f in fields[:8])}")
+            else:
+                parts.append(f"  • Form: {str(form)[:100]}")
+
+    sp_count = signals.get('social_proof_count', 0)
+    sp_signals = signals.get('social_proof_signals', [])
+    if sp_count > 0 or sp_signals:
+        parts.append(f"\nSOCIAL PROOF: {sp_count} testimonial/proof elements detected")
+        for sp in sp_signals[:3]:
+            parts.append(f"  • \"{str(sp)[:120]}\"")
+
     images = signals.get('images_with_context', [])
     if images:
-        parts.append(f"\nImages with alt text: {', '.join(images[:10])}")
-    
+        parts.append(f"\nIMAGES ({len(images)} with context):")
+        for img in images[:4]:
+            if isinstance(img, dict):
+                alt = img.get('alt', 'no alt text')
+            else:
+                alt = str(img)[:80]
+            parts.append(f"  • Image: \"{alt}\"")
+
     return "\n".join(parts)

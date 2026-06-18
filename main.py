@@ -23,9 +23,9 @@ def main():
     if not li_at:
         print("WARNING: LI_AT (LinkedIn session cookie) not found in .env. Scrape may fail due to login wall.")
     
-    text = scrape_linkedin_profile(url, headless=True, li_at_cookie=li_at)
+    result = scrape_linkedin_profile(url, headless=True, li_at_cookie=li_at, check_activity=True)
     
-    if not text:
+    if not result:
         print("Failed to extract text from profile.")
         sys.exit(1)
     
@@ -35,9 +35,11 @@ def main():
 
     # Step 2: Extract
     print("Step 2: Extracting data...")
-    data = extract_profile_data(text)
+    data = extract_profile_data(result['visible_text'])
 
     if data:
+        data['is_active'] = result['is_active']
+        data['latest_activity_date'] = result['latest_activity_date']
         print(json.dumps(data, indent=2))
         
         # Save to output file

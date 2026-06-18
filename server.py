@@ -1,4 +1,4 @@
-﻿import os
+import os
 import time
 import json
 import uuid
@@ -15,6 +15,7 @@ from website_scraper import scrape_generic_website, scrape_website_rich
 from website_extractor import extract_website_data
 from google_searcher import search_google
 from logger import log, log_manager
+import dork_engine
 
 # In-memory store for bulk jobs (use a proper DB/queue for production)
 bulk_jobs = {}
@@ -65,6 +66,44 @@ def stream_logs():
             log_manager.unsubscribe(q)
             
     return Response(generate(), mimetype='text/event-stream')
+
+# ── Lead Finder API ─────────────────────────────────────────────────
+
+@app.route('/api/find-leads', methods=['POST'])
+def find_leads():
+    data = request.json
+    max_leads = data.get('max_leads', 200)
+    max_pages = data.get('max_pages', 3)
+    prequalify = data.get('prequalify', True)
+    
+    config = {
+        "max_urls_target": max_leads,
+        "max_pages_per_dork": max_pages,
+        "prequalify": prequalify
+    }
+    
+    thread = threading.Thread(target=dork_engine.run, args=(config,))
+    thread.start()
+    
+    return jsonify({"status": "started", "message": "Lead discovery started in background"})
+
+@app.route('/api/leads', methods=['GET'])
+def get_leads():
+    leads = []
+    if os.path.exists("discovered_leads.txt"):
+        with open("discovered_leads.txt", "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    leads.append({"url": line.strip()})
+    return jsonify({"leads": leads, "count": len(leads)})
+
+@app.route('/api/clear-leads', methods=['POST'])
+def clear_leads():
+    if os.path.exists("discovered_leads.txt"):
+        os.remove("discovered_leads.txt")
+    return jsonify({"status": "cleared", "message": "Leads cleared successfully"})
+
+# ── Profile Scraper API ─────────────────────────────────────────────
 
 @app.route('/api/scrape', methods=['POST'])
 def scrape():

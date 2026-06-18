@@ -1,0 +1,61 @@
+﻿[1/3] Scraping https://youronlinelifecoach.com...
+Navigating to https://youronlinelifecoach.com...
+Screenshot captured: 370635 bytes
+[2/3] Scrape complete.
+  - Text length: 6693
+  - Structural signals keys: ['headlines', 'social_proof_signals', 'social_proof_count', 'cta_buttons', 'cta_links', 'forms', 'images_with_context', 'meta_description', 'page_title']
+  - Screenshot captured: Yes
+  - Screenshot base64 size: 494180 chars
+
+[3/3] Running AI extraction...
+Using VISION model (gemini-2.5-flash) via Gemini with screenshot
+RAW AI OUTPUT: {
+  "page_type": "life coaching page",
+  "direct_goal": "schedule a free discovery call",
+  "primary_cta_text": "book it",
+  "logical_cta_action": "schedule a call",
+  "cta_destination": "calendar",
+  "all_ctas_found": [
+    "learn more",
+    "contact me",
+    "about me",
+    "read more",
+    "425-977-5165",
+    "email",
+    "book it",
+    "subscribe",
+    "email me",
+    "book a meeting",
+    "click here to chat"
+  ],
+  "strengths": "clear explanation of the coaching process and benefits, strong social proof with multiple testimonials and trust badges, a clear call to action for a free discovery call, professional and clean design",
+  "roadblock_1": "the primary call-to-action button for the discovery call is visually subtle and blends into the background, making it hard to spot",
+  "roadblock_2": "the page has multiple competing calls to action and navigation links that distract from the main goal of scheduling a discovery call",
+  "roadblock_3": "the main headline in the hero section is generic and doesn't immediately convey a specific, compelling outcome for the visitor",
+  "audience": "individuals seeking personal growth and transformation"
+}
+
+=== AI AUDIT RESULT ===
+{
+  "page_type": "life coaching page",
+  "direct_goal": "schedule a free discovery call",
+  "primary_cta_text": "book it",
+  "logical_cta_action": "schedule a call",
+  "cta_destination": "calendar",
+  "all_ctas_found": [
+    "learn more",
+    "contact me",
+    "about me",
+    "read more",
+    "425-977-5165",
+    "email",
+    "book it",
+    "subscribe",
+    "email me",
+    "book a meeting",
+    "click here to chat"
+  ],
+  "strengths": "clear explanation of the coaching process and benefits, strong social proof with multiple testimonials and trust badges, a clear call to action for a free discovery call, professional and clean design",
+  "audience": "individuals seeking personal growth and transformation",
+  "roadblock": "ΓåÆ the primary call-to-action button for the discovery call is visually subtle and blends into the background, making it hard to spot\nΓåÆ the page has multiple competing calls to action and navigation links that distract from the main goal of scheduling a discovery call\nΓåÆ the main headline in the hero section is generic and doesn't immediately convey a specific, compelling outcome for the visitor"
+}
